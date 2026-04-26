@@ -1,0 +1,143 @@
+{
+  "name": "monologue",
+  "author": "astosia",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble",
+    "watchface",
+    "monologue",
+    "color",
+    "colorful",
+    "shadow",
+    "analog"
+  ],
+  "private": true,
+  "dependencies": {
+    "@rebble/clay": "^1.0.6",
+    "pebble-fctx": "^1.6.5",
+    "pebble-fctx-compiler": "^1.2.2"
+  },
+  "pebble": {
+    "displayName": "monologue",
+    "uuid": "59daebe7-5e44-4e1c-a637-30c270509e0d",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint",
+      "gabbro"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "capabilities": [
+      "configurable"
+    ],
+    "messageKeys": [
+      "EnableSecondsHand",
+      "PosLeft",
+      "PosTop",
+      "PosRight",
+      "PosBottom",
+      "RemoveZero24h",
+      "AddZero12h",
+      "showlocalAMPM",
+      "SecondsVisibleTime",
+      "showMinorTick",
+      "showMajorTick",
+      "EnableDate",
+      "EnableBattery",
+      "EnableBatteryLine",
+      "EnableLogo",
+      "LogoText",
+      "BackgroundColor1",
+      "BackgroundColor2",
+      "TickColor",
+      "TextColor1",
+      "TextColor2",
+      "TextColor3",
+      "DateColor",
+      "BTQTColor",
+      "ShadowOn",
+      "HoursHandColor",
+      "HoursHandBorderColor",
+      "MinutesHandColor",
+      "MinutesHandBorderColor",
+      "SecondsHandColor",
+      "BatteryLineColor",
+      "BWBackgroundColor1",
+      "BWBackgroundColor2",
+      "BWTextColor1",
+      "BWTextColor2",
+      "BWTextColor3",
+      "BWDateColor",
+      "BWBTQTColor",
+      "BWThemeSelect",
+      "ThemeSelect",
+      "BWShadowOn",
+      "Font",
+      "VibeOn"
+    ],
+    "resources": {
+      "media": [
+        {
+          "file": "fonts/Conthrax-SemiBold.otf",
+          "name": "FONT_DATE_9",
+          "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint"
+          ],
+          "type": "font"
+        },
+        {
+          "file": "fonts/Conthrax-SemiBold.otf",
+          "name": "FONT_DATE_8",
+          "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint"
+          ],
+          "type": "font"
+        },
+        {
+          "file": "fonts/Conthrax-SemiBold.otf",
+          "name": "FONT_DATE_10",
+          "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint"
+          ],
+          "type": "font"
+        },
+        {
+          "file": "fonts/Conthrax-SemiBold.otf",
+          "name": "FONT_DATE_24",
+          "targetPlatforms": [
+            "aplite",
+            "diorite",
+            "flint"
+          ],
+          "type": "font"
+        },
+        {
+          "file": "fonts/dripicons-v2.ttf",
+          "characterRegex": "[z]",
+          "name": "FONT_DRIPICONS_16",
+          "targetPlatforms": null,
+          "type": "font"
+        },
+        {
+          "file": "data/Conthrax-SemiBold2.ffont",
+          "name": "FONT_DATE_FCTX",
+          "targetPlatforms": null,
+          "type": "raw"
+        }
+      ]
+    }
+  }
+}
