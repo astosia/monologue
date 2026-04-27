@@ -16,6 +16,16 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Watchface Style",
+        "messageKey": "ForegroundShape",
+        "description": "Off = Rectangular, On = Round",
+        "capabilities": [
+          "RECT"
+        ],
+        "defaultValue": true
+      },
+      {
+        "type": "toggle",
         "messageKey": "showlocalAMPM",
         "label": "AM/PM Visible",
         "description": "Applies only when 12h time selected in watch settings",

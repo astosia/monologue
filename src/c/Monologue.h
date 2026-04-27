@@ -83,4 +83,5 @@ typedef struct ClaySettings {
   GColor BWBTQTColor;
   bool BWShadowOn;
   bool ShadowOn;
+  bool ForegroundShape;
 } __attribute__((__packed__)) ClaySettings;

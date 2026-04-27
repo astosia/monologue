@@ -90,6 +90,8 @@ typedef struct {
   int battery_line;
   int second_hand_a;
   int second_hand_b;
+  int second_hand_c;
+  int second_hand_d;
   int hour_hand_a;
   int min_hand_a;
   int circle_radius_adj;
@@ -99,6 +101,14 @@ typedef struct {
   int BTIconXOffset2;
   int QTIconYOffset2;
   int BTIconYOffset2;
+  int corner_radius_secondshand;
+  int corner_radius_majortickrect;
+  int corner_radius_minortickrect;
+  int majortickrect_w;
+  int majortickrect_h;
+  int minortickrect_w;
+  int minortickrect_h;
+  int tick_inset_outer;
   GRect dial_digits_mask_a[1];
   GRect dial_digits_mask_b[1];
   GRect dial_digits_mask_c[1];
@@ -147,6 +157,8 @@ static const UIConfig config = {
 .battery_line = 63, //sized to the width of the default logo TITANIUM
 .second_hand_a = 1,  //was 20
 .second_hand_b = 28,
+.second_hand_c = 6,
+.second_hand_d = 14,
 .hour_hand_a = 45,
 .min_hand_a = 2,  //was 20
 .circle_radius_adj = 18,
@@ -156,6 +168,14 @@ static const UIConfig config = {
 .QTIconYOffset2 = 0,
 .BTIconXOffset2 = 0,
 .BTIconYOffset2 = 0,
+.corner_radius_secondshand = 24,
+.corner_radius_majortickrect = 20,
+.corner_radius_minortickrect = 28,
+.majortickrect_w = 86,
+.majortickrect_h = 100,
+.minortickrect_w = 90,
+.minortickrect_h = 104,
+.tick_inset_outer = -10,
 .dial_digits_mask_a = {{{100-15,23},{39,7}}},
 .dial_digits_mask_b = {{{100-19,0},{39,27}}},
 .dial_digits_mask_c = {{{100-15,228-27},{31,27}}}
@@ -212,6 +232,7 @@ static const UIConfig config = {
 .QTIconYOffset2 = 0,
 .BTIconXOffset2 = 0,
 .BTIconYOffset2 = 0,
+.second_hand_c = 40,
 .dial_digits_mask_a = {{{130-15,23-2},{39,7+2}}},
 .dial_digits_mask_b = {{{130-19,0},{39,27}}},
 .dial_digits_mask_c = {{{130-15,260-27},{31,27}}}
@@ -259,6 +280,8 @@ static const UIConfig config = {
 .battery_line = 51,
 .second_hand_a = 1,
 .second_hand_b = 22,
+.second_hand_c = 6,
+.second_hand_d = 11,
 .hour_hand_a = 35,
 .min_hand_a = 22,
 .circle_radius_adj = 18,
@@ -268,6 +291,14 @@ static const UIConfig config = {
 .QTIconYOffset2 = 23,
 .BTIconXOffset2 = -29,
 .BTIconYOffset2 = 23,
+.corner_radius_secondshand = 18,
+.corner_radius_majortickrect = 15,
+.corner_radius_minortickrect = 21,
+.majortickrect_w = 62,
+.majortickrect_h = 72,
+.minortickrect_w = 66,
+.minortickrect_h = 76,
+.tick_inset_outer = -10,
 .dial_digits_mask_a = {{{72-14,22},{36,7}}},
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
 .dial_digits_mask_c = {{{72-13,168-26},{28,26}}}
@@ -324,6 +355,7 @@ static const UIConfig config = {
 .QTIconYOffset2 = 0,
 .BTIconXOffset2 = 0,
 .BTIconYOffset2 = 0,
+.second_hand_c = 28,
 .dial_digits_mask_a = {{{90-14,22},{36,7}}},
 .dial_digits_mask_b = {{{90-18,0},{36,26}}},
 .dial_digits_mask_c = {{{90-13,180-26},{28,26}}}
@@ -371,6 +403,8 @@ static const UIConfig config = {
 .battery_line = 51,
 .second_hand_a = 1,
 .second_hand_b = 22,
+.second_hand_c = 6,
+.second_hand_d = 11,
 .hour_hand_a = 35,
 .min_hand_a = 22,
 .circle_radius_adj = 18,
@@ -380,6 +414,14 @@ static const UIConfig config = {
 .QTIconYOffset2 = 23,
 .BTIconXOffset2 = -29,
 .BTIconYOffset2 = 23,
+.corner_radius_secondshand = 18,
+.corner_radius_majortickrect = 15,
+.corner_radius_minortickrect = 21,
+.majortickrect_w = 62,
+.majortickrect_h = 72,
+.minortickrect_w = 66,
+.minortickrect_h = 76,
+.tick_inset_outer = -10,
 .dial_digits_mask_a = {{{72-14,22},{36,7}}},
 .dial_digits_mask_b = {{{72-18,0},{36,26}}},
 .dial_digits_mask_c = {{{72-13,168-26},{28,26}}}
@@ -469,6 +511,7 @@ static void prv_default_settings(void) {
   settings.AddZero12h = false;
   settings.RemoveZero24h = false;
   settings.showlocalAMPM = true;
+  settings.ForegroundShape = true;  //true = round, false = rect
 }
 
 // Quiet time icon handler
@@ -611,6 +654,13 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *posbottom_t = dict_find(iter, MESSAGE_KEY_PosBottom);
   Tuple *majort_t = dict_find(iter, MESSAGE_KEY_showMajorTick);
   Tuple *minort_t = dict_find(iter, MESSAGE_KEY_showMinorTick);
+  Tuple *fg_shape_t = dict_find(iter, MESSAGE_KEY_ForegroundShape);
+
+  if (fg_shape_t) {
+    settings.ForegroundShape = fg_shape_t->value->int32 == 1;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+  }
 
   if(majort_t){
     settings.showMajorTick = majort_t->value->int32 != 0;
@@ -1207,9 +1257,25 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint origin_offset = GPoint(origin.x + config.hands_shadow, origin.y + config.hands_shadow);
-  GPoint p1 = polar_to_point_offset(origin, angle + 180, back_length);
-  GPoint p2 = polar_to_point_offset(origin, angle, length);
+  GPoint p1;
+  GPoint p2;
+  
+  #ifdef PBL_ROUND
+    p1 = polar_to_point_offset(origin, angle + 180, back_length);
+    p2 = polar_to_point_offset(origin, angle, length);
+  #else
+    if(settings.ForegroundShape){
+      p1 = polar_to_point_offset(origin, angle + 180, back_length);
+      p2 = polar_to_point_offset(origin, angle, length);
+    }
+    else{
+      GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
+      //p1 = point_from_edge(origin, angle+180, r, back_length);
+      p1 = polar_to_point_offset(origin, angle + 180, back_length);
+      p2 = angle_to_rounded_rect_edge(origin, angle, bounds.size.w/2 - config.second_hand_c, bounds.size.h/2 - config.second_hand_c, config.corner_radius_secondshand);
 
+    }
+  #endif
   // Define shadow color
   GColor shadow_color = PBL_IF_BW_ELSE(settings.BWBackgroundColor2,settings.BackgroundColor2);
 
@@ -1255,13 +1321,38 @@ static void draw_seconds_center(GContext *ctx, GColor outer_color, GColor inner_
 
 
 static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_color, GColor border_color) {
+    // GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
+
+    // // The tick starts away from the center
+    // GPoint p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
+    // // The tick ends at a fixed length from p1
+    // GPoint p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
+ 
+
     GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
+      GPoint p1;
+      GPoint p2;
 
-    // The tick starts away from the center
-    GPoint p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
-    // The tick ends at a fixed length from p1
-    GPoint p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
-
+      #ifdef PBL_ROUND
+        p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
+        p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
+      #else
+        if(settings.ForegroundShape){
+          p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 );
+          p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 16 + length);
+        }
+        else{
+          GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
+          GPoint edge = angle_to_rect_edge(origin, angle, r);
+          int32_t dx = cos_lookup(DEG_TO_TRIGANGLE(angle));
+          int32_t dy = sin_lookup(DEG_TO_TRIGANGLE(angle));
+          p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
+                            edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
+          p1 = angle_to_rounded_rect_edge(origin, angle, config.majortickrect_w, config.majortickrect_h, config.corner_radius_majortickrect);
+        }
+      #endif
+ 
+    graphics_context_set_antialiased(ctx, true);
     graphics_context_set_stroke_color(ctx, border_color);
     graphics_context_set_stroke_width(ctx, 3);
     graphics_draw_line(ctx, p1, p2);
@@ -1269,11 +1360,29 @@ static void draw_major_tick (GContext *ctx, int angle, int length, GColor fill_c
 
 static void draw_minor_tick(GContext *ctx, int angle, GColor border_color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
+      GPoint p1;
+      GPoint p2;
 
-  // The tick starts away from the center of the watch face.
-  GPoint p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 8);
-  // The tick ends closer to the edge.
-  GPoint p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 );
+      #ifdef PBL_ROUND
+          // The tick starts away from the center of the watch face.
+          p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 8);
+          // The tick ends closer to the edge.
+          p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 );
+      #else
+        if(settings.ForegroundShape){
+            p1 = polar_to_point_offset(origin, angle, bounds.size.h / 2 - 8);
+            p2 = polar_to_point_offset(origin, angle, bounds.size.h / 2 );
+          }
+          else{
+            GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
+            GPoint edge = angle_to_rect_edge(origin, angle, r);
+            int32_t dx = cos_lookup(DEG_TO_TRIGANGLE(angle));
+            int32_t dy = sin_lookup(DEG_TO_TRIGANGLE(angle));
+            p2 = GPoint(edge.x - (int)((dx * config.tick_inset_outer) / TRIG_MAX_ANGLE),
+                              edge.y - (int)((dy * config.tick_inset_outer) / TRIG_MAX_ANGLE));
+            p1 = angle_to_rounded_rect_edge(origin, angle, config.minortickrect_w, config.minortickrect_h, config.corner_radius_minortickrect);
+          }
+      #endif
 
   graphics_context_set_antialiased(ctx, true);
   graphics_context_set_stroke_color(ctx, border_color);
@@ -2845,10 +2954,28 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
    int minutes_angle = ((double)minutes / 60 * 360) + /*((double)seconds / 60 * 360 / 60)*/ - 90;
 
    //draw_fancy_hand_min(ctx, minutes_angle, bounds.size.w / 2 - config.min_hand_a, PBL_IF_BW_ELSE(settings.BWTextColor1,settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWTextColor2,settings.MinutesHandBorderColor));
-
-   draw_line_hand(ctx, minutes_angle, bounds.size.w/2 - config.second_hand_a, config.second_hand_b,  PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor));
+  #ifdef PBL_ROUND
+   draw_line_hand(ctx, minutes_angle,
+       bounds.size.w/2 - config.second_hand_a, 
+       config.second_hand_b,  
+       PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor));
    draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
-
+  #else
+  if(settings.ForegroundShape){
+   draw_line_hand(ctx, minutes_angle, 
+        bounds.size.w/2 - config.second_hand_a, 
+        config.second_hand_b,  
+        PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor));
+   draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+  }
+  else{
+    draw_line_hand(ctx, minutes_angle, 
+        bounds.size.w/2 - config.second_hand_a, 
+        config.second_hand_b,  
+        PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor));
+    draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWTextColor1, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+  }
+  #endif
   
 
 //  #ifdef PBL_COLOR
