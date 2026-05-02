@@ -26,13 +26,6 @@ module.exports = [
       },
       {
         "type": "toggle",
-        "messageKey": "showlocalAMPM",
-        "label": "AM/PM Visible",
-        "description": "Applies only when 12h time selected in watch settings",
-        "defaultValue": true
-      },
-      {
-        "type": "toggle",
         "label": "Add leading zero to 12h time",
         "messageKey": "AddZero12h",
         "defaultValue": false
@@ -400,25 +393,25 @@ module.exports = [
       {
         "type": "color",
         "label": "Minute Hand Shadow Colour",
-        "messageKey": "BackgroundColor2",
+        "messageKey": "MinuteHandShadowColor",
         "defaultValue": "AAAAAA"
       },
       {
         "type": "color",
         "label": "Major Tickmark Colour",
-        "messageKey": "TickColor",
+        "messageKey": "MajorTickColor",
         "defaultValue": "000000"
       },
       {
         "type": "color",
         "label": "Minor Tickmark Colour",
-        "messageKey": "TextColor2",
+        "messageKey": "MinorTickColor",
         "defaultValue": "000000"
       },
       {
         "type": "color",
         "label": "Hours Digits Colour",
-        "messageKey": "HoursHandColor",
+        "messageKey": "HourDigitsColor",
         "defaultValue": "FFFFFF"
       },
       {
@@ -495,26 +488,26 @@ module.exports = [
       {
         "type": "color",
         "label": "Minute Hand Shadow Colour",
-        "messageKey": "BWBackgroundColor2",
+        "messageKey": "BWMinuteHandShadowColor",
         "defaultValue": "AAAAAA",
         "allowGray": true
       },
       {
         "type": "color",
         "label": "Tickmark Colour",
-        "messageKey": "BWTextColor3",
+        "messageKey": "BWMajorTickColor",
         "defaultValue": "000000"
       },
       {
         "type": "color",
         "label": "Minute Hand & Battery Line Colour",
-        "messageKey": "BWTextColor1",
+        "messageKey": "BWMinHandBatLineColor",
         "defaultValue": "000000"
       },
       {
         "type": "color",
         "label": "Hours Digits Colour",
-        "messageKey": "BWTextColor2",
+        "messageKey": "BWHourDigitsColor",
         "defaultValue": "000000"
       },
       {

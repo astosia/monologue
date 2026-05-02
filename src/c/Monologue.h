@@ -2,7 +2,7 @@
 #include <pebble.h>
 
 #define MODEL_COUNT 9
-#define SETTINGS_KEY 12
+#define SETTINGS_KEY 124
 
 typedef struct DialSpec {
   GPoint markers[12];
@@ -61,24 +61,24 @@ typedef struct ClaySettings {
   char BWThemeSelect[4];
   char ThemeSelect[4];
   GColor BackgroundColor1;
-  GColor BackgroundColor2;
+  GColor MinuteHandShadowColor;
   GColor TextColor1;
-  GColor TextColor2;
+  GColor MinorTickColor;
   GColor TextColor3;
-  GColor TickColor;
+  GColor MajorTickColor;
   GColor DateColor;
   GColor BWDateColor;
-  GColor HoursHandColor;
+  GColor HourDigitsColor;
   GColor HoursHandBorderColor;
   GColor MinutesHandColor;
   GColor MinutesHandBorderColor;
   GColor SecondsHandColor;
   GColor BatteryLineColor;
   GColor BWBackgroundColor1;
-  GColor BWBackgroundColor2;
-  GColor BWTextColor1;
-  GColor BWTextColor2;
-  GColor BWTextColor3;
+  GColor BWMinuteHandShadowColor;
+  GColor BWMinHandBatLineColor;
+  GColor BWHourDigitsColor;
+  GColor BWMajorTickColor;
   GColor BTQTColor;
   GColor BWBTQTColor;
   bool BWShadowOn;
