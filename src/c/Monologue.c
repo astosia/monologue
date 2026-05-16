@@ -6,9 +6,6 @@
 #include <pebble-fctx/fpath.h>
 #include <pebble-fctx/ffont.h>
 
-// Constants for improved readability
-#define SECONDS_TICK_INTERVAL_MS 1000
-
 // Main window and layers
 static Window *s_window;
 static Layer *s_canvas_layer;
@@ -16,12 +13,12 @@ static Layer *s_bg_layer;
 static Layer *s_dial_layer;
 //static Layer *s_dial_digits_layer;
 static Layer *s_date_battery_logo_layer;
-static Layer *s_canvas_second_hand;
+//static Layer *s_canvas_second_hand;
 static Layer *s_canvas_bt_icon;
 static Layer *s_canvas_qt_icon;
 static Layer *s_canvas_battery;
 static GRect bounds;
-static GRect bounds_seconds;
+//static GRect bounds_seconds;
 // Fonts
 static GFont
     #ifdef PBL_BW
@@ -32,7 +29,6 @@ static GFont
     #endif
     FontBTQTIcons;
 
-//FFont* Digits_Font;
 FFont* Date_Font;
 // Time and date variables
 static struct tm *prv_tick_time;
@@ -41,9 +37,9 @@ static int s_weekday;
 static int minutes;
 static int hours;   //12h modulo
 static int s_hours; //24h version
-static int seconds;
+
 static ClaySettings settings;
-static bool showSeconds;
+
 
 // Date position struct for different platforms
 typedef struct {
@@ -88,9 +84,9 @@ typedef struct {
   int battery_pos_z;
   int battery_pos_y;
   int battery_line;
-  int second_hand_a;
-  int second_hand_b;
-  int second_hand_c;
+  int analogue_hand_a;
+  int analogue_hand_b;
+  int analogue_hand_c;
   int hour_hand_a;
   int min_hand_a;
   int circle_radius_adj;
@@ -156,9 +152,9 @@ static const UIConfig config = {
 .battery_pos_z = -2,
 .battery_pos_y = 4,
 .battery_line = 63, //sized to the width of the default logo TITANIUM
-.second_hand_a = 1,  //was 20
-.second_hand_b = 28,
-.second_hand_c = 20,
+.analogue_hand_a = 1,  //was 20
+.analogue_hand_b = 28,
+.analogue_hand_c = 20,
 .hour_hand_a = 45,
 .min_hand_a = 2,  //was 20
 .circle_radius_adj = 18,
@@ -223,8 +219,8 @@ static const UIConfig config = {
 .battery_pos_z = -2,
 .battery_pos_y = 4,
 .battery_line = 63,
-.second_hand_a = 3+8,
-.second_hand_b = 32,
+.analogue_hand_a = 3+8,
+.analogue_hand_b = 32,
 .hour_hand_a = 60,
 .min_hand_a = 2,
 .circle_radius_adj = 17,
@@ -234,7 +230,7 @@ static const UIConfig config = {
 .QTIconYOffset2 = 0,
 .BTIconXOffset2 = 0,
 .BTIconYOffset2 = 0,
-.second_hand_c = 40,
+.analogue_hand_c = 40,
 .SecondsCentreOuterRadius = 11,
 .SecondsCentreInnerRadius = 3,
 .dial_digits_mask_a = {{{130-15,23-2},{39,7+2}}},
@@ -282,9 +278,9 @@ static const UIConfig config = {
 .battery_pos_z = 0,
 .battery_pos_y = 4,
 .battery_line = 51,
-.second_hand_a = 1,
-.second_hand_b = 22,
-.second_hand_c = 20,
+.analogue_hand_a = 1,
+.analogue_hand_b = 22,
+.analogue_hand_c = 20,
 .hour_hand_a = 35,
 .min_hand_a = 22,
 .circle_radius_adj = 18,
@@ -349,8 +345,8 @@ static const UIConfig config = {
 .battery_pos_z = 0,
 .battery_pos_y = 4,
 .battery_line = 51,
-.second_hand_a = 3+8,
-.second_hand_b = 22,
+.analogue_hand_a = 3+8,
+.analogue_hand_b = 22,
 .hour_hand_a = 50,
 .min_hand_a = 34,
 .circle_radius_adj = 17,
@@ -360,7 +356,7 @@ static const UIConfig config = {
 .QTIconYOffset2 = 0,
 .BTIconXOffset2 = 0,
 .BTIconYOffset2 = 0,
-.second_hand_c = 28,
+.analogue_hand_c = 28,
 .SecondsCentreOuterRadius = 7,
 .SecondsCentreInnerRadius = 1,
 .dial_digits_mask_a = {{{90-14,22},{36,7}}},
@@ -408,9 +404,9 @@ static const UIConfig config = {
 .battery_pos_z = 0,
 .battery_pos_y = 4,
 .battery_line = 51,
-.second_hand_a = 1,
-.second_hand_b = 22,
-.second_hand_c = 3,
+.analogue_hand_a = 1,
+.analogue_hand_b = 22,
+.analogue_hand_c = 3,
 .hour_hand_a = 35,
 .min_hand_a = 22,
 .circle_radius_adj = 18,
@@ -437,11 +433,8 @@ static const UIConfig config = {
 #endif
 
 bool connected = true;
-bool ignore_next_tap = false;
 
 //function prototypes
-
-
 
 static void prv_save_settings(void);
 static void prv_default_settings(void);
@@ -460,7 +453,7 @@ static void layer_update_proc_bt(Layer *layer, GContext *ctx);
 // static void draw_fancy_hand_min(GContext *ctx, int angle, int length, GColor fill_color, GColor border_color);
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color);
 //static void draw_center(GContext *ctx, GColor minutes_border, GColor minutes_color);
-static void draw_seconds_center(GContext *ctx, GColor outer_color, GColor inner_color);
+static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color);
 static void prv_window_load(Window *window);
 static void prv_window_unload(Window *window);
 static void prv_init(void);
@@ -474,8 +467,8 @@ static void prv_save_settings(void) {
 
 // Set default settings
 static void prv_default_settings(void) {
-  settings.EnableSecondsHand = true;
-  settings.SecondsVisibleTime = 135;
+  // settings.EnableSecondsHand = true;
+  // settings.SecondsVisibleTime = 135;
   settings.EnableDate = true;
   settings.EnableBattery = true;
   settings.EnableBatteryLine = true;
@@ -520,6 +513,12 @@ static void prv_default_settings(void) {
   settings.RemoveZero24h = false;
   //settings.showlocalAMPM = true;
   settings.ForegroundShape = true;  //true = round, false = rect
+  settings.CentreSize = config.SecondsCentreOuterRadius;
+  settings.InnerCentreSize = config.SecondsCentreInnerRadius;
+  settings.HandThickness = 2;
+  settings.DigitalHour = true;
+  settings.BackSize = 4;
+  settings.BackLen = config.analogue_hand_b;
 }
 
 // Quiet time icon handler
@@ -528,81 +527,20 @@ static void quiet_time_icon () {
 }
 
 
-static AppTimer *s_timeout_timer;
-
-
-static void timeout_handler(void *context) {
-  // showSeconds = false;
-
-  // // Unsubscribe from second ticks to save power
-  // //// tick_timer_service_unsubscribe();
-  // tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-
-  // layer_mark_dirty(s_canvas_second_hand);
-  // s_timeout_timer = NULL; // Set the handle to NULL after the timer expires
-
-  // //APP_LOG(APP_LOG_LEVEL_DEBUG, "timeout event");
-
-}
-
-static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
-  //  if (ignore_next_tap) {
-  //      ignore_next_tap = false; // Reset the flag for the next tap
-  //      return;
-  //    }
-
-  // // Only handle if the seconds hand setting is enabled and not already always on
-  // if (settings.EnableSecondsHand && settings.SecondsVisibleTime < 135) {
-  //     // If a timer is already running, cancel it
-  //     if (s_timeout_timer) {
-  //       app_timer_cancel(s_timeout_timer);
-  //       s_timeout_timer = NULL;
-  //     }
-
-  //     // Only subscribe to second ticks if not already subscribed
-  //     if (!showSeconds) {
-  //     //   tick_timer_service_unsubscribe();
-  //        tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
-  //     //   layer_mark_dirty(s_canvas_second_hand);
-  //     }
-      
-  //     showSeconds = true;
-
-  //     // Register a new timer to hide the seconds hand
-  //     s_timeout_timer = app_timer_register(SECONDS_TICK_INTERVAL_MS * settings.SecondsVisibleTime, timeout_handler, NULL);
-  //     layer_mark_dirty(s_canvas_second_hand);
-  // }
-}
-
 static void bluetooth_vibe_icon (bool connected) {
-
 
    layer_set_hidden(s_canvas_bt_icon, connected);
 
   if((!connected && !quiet_time_is_active()) ||(!connected && quiet_time_is_active() && settings.VibeOn)) {
-    if (settings.SecondsVisibleTime > 0 && settings.SecondsVisibleTime < 135) {
-      // Unsubscribe from accel_tap before the vibe
-      accel_tap_service_unsubscribe();
-      showSeconds = false;
-    }
-
     // Issue a vibrating alert
     #ifdef PBL_PLATFORM_DIORITE
     vibes_short_pulse();
-    ignore_next_tap = true;
 
     #else
     vibes_double_pulse();
-    // Set the flag to ignore the next tap
-    ignore_next_tap = false;
     #endif
 
-    if (settings.SecondsVisibleTime > 0 && settings.SecondsVisibleTime < 135) {
-      accel_tap_service_subscribe(accel_tap_handler);
-    }
-  }
-
-
+}
 }
 
 // Load settings from persistent storage
@@ -621,8 +559,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   bool theme_settings_changed = false;
 
   Tuple *vibe_t = dict_find(iter, MESSAGE_KEY_VibeOn);
-  Tuple *enable_seconds_t = dict_find(iter, MESSAGE_KEY_EnableSecondsHand);
-  Tuple *enable_secondsvisible_t = dict_find(iter, MESSAGE_KEY_SecondsVisibleTime);
   Tuple *enable_date_t = dict_find(iter, MESSAGE_KEY_EnableDate);
   Tuple *enable_battery_t = dict_find(iter, MESSAGE_KEY_EnableBattery);
   Tuple *enable_battery_line_t = dict_find(iter, MESSAGE_KEY_EnableBatteryLine);
@@ -655,7 +591,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *shadowon_t = dict_find(iter, MESSAGE_KEY_ShadowOn);
   Tuple *addzero12_t = dict_find(iter, MESSAGE_KEY_AddZero12h);
   Tuple *remzero24_t = dict_find(iter, MESSAGE_KEY_RemoveZero24h);
- // Tuple *localampm_t = dict_find(iter, MESSAGE_KEY_showlocalAMPM);
   Tuple *posleft_t = dict_find(iter, MESSAGE_KEY_PosLeft);
   Tuple *posright_t = dict_find(iter, MESSAGE_KEY_PosRight);
   Tuple *postop_t = dict_find(iter, MESSAGE_KEY_PosTop);
@@ -663,11 +598,59 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *majort_t = dict_find(iter, MESSAGE_KEY_showMajorTick);
   Tuple *minort_t = dict_find(iter, MESSAGE_KEY_showMinorTick);
   Tuple *fg_shape_t = dict_find(iter, MESSAGE_KEY_ForegroundShape);
+  Tuple *dig_t = dict_find(iter,MESSAGE_KEY_DigitalHour);
+  Tuple *hand_t = dict_find(iter, MESSAGE_KEY_HandThickness);
+  Tuple *ocent_t = dict_find(iter, MESSAGE_KEY_CentreSize);
+  Tuple *icent_t = dict_find(iter, MESSAGE_KEY_InnerCentreSize);
+  Tuple *back_t = dict_find(iter, MESSAGE_KEY_BackSize);
+  Tuple *backlen_t = dict_find(iter, MESSAGE_KEY_BackLen);
 
   if (fg_shape_t) {
     settings.ForegroundShape = fg_shape_t->value->int32 == 1;
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
+  }
+
+  if (dig_t) {
+    settings.DigitalHour = dig_t->value->int32 != 0;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (ocent_t) {
+    settings.CentreSize = (int) ocent_t -> value -> int32;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (icent_t) {
+    settings.InnerCentreSize = (int) icent_t -> value -> int32;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (hand_t) {
+    settings.HandThickness = (int) hand_t -> value -> int32;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (back_t) {
+    settings.BackSize = (int) back_t -> value -> int32;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
+  }
+
+  if (backlen_t) {
+    settings.BackLen = (int) backlen_t -> value -> int32;
+    layer_mark_dirty(s_bg_layer);
+    layer_mark_dirty(s_canvas_layer);
+    layer_mark_dirty(s_date_battery_logo_layer);
   }
 
   if(majort_t){
@@ -721,21 +704,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
      layer_mark_dirty(s_date_battery_logo_layer);
   }
 
-  // if (localampm_t) {
-  //   settings.showlocalAMPM = localampm_t->value->int32 == 1;
-  //   layer_mark_dirty(s_date_battery_logo_layer);
-  // }
-
-  if (enable_seconds_t) {
-    settings.EnableSecondsHand = enable_seconds_t->value->int32 == 1;
-    // Unsubscribe from any existing tick services
-    tick_timer_service_unsubscribe();
-    accel_tap_service_unsubscribe();
-    // Always subscribe to MINUTE_UNIT by default for efficiency
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-    layer_mark_dirty(s_canvas_second_hand);
-  }
-
   if (enable_date_t) {
     settings.EnableDate = enable_date_t->value->int32 == 1;
     layer_mark_dirty(s_canvas_layer);
@@ -761,8 +729,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
   }
 
-
-
   if (enable_battery_t) {
     settings.EnableBattery = enable_battery_t->value->int32 == 1;
     layer_mark_dirty(s_canvas_battery);
@@ -773,47 +739,6 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings.EnableBatteryLine = enable_battery_line_t->value->int32 == 1;
     layer_mark_dirty(s_canvas_battery);
   }
-
-  if (enable_secondsvisible_t) {
-    settings.SecondsVisibleTime = (int) enable_secondsvisible_t->value->int32;
-    // Cancel and re-register timer if it was running
-    if (s_timeout_timer) {
-      app_timer_cancel(s_timeout_timer);
-      s_timeout_timer = NULL;
-    }
-
-    // Handle "Always On" vs. "Timeout" behavior for the seconds hand
-    if (settings.SecondsVisibleTime == 135) {
-      // "Always On" logic: show seconds, and don't register a timer
-      showSeconds = true;
-      if (settings.EnableSecondsHand) {
-        tick_timer_service_unsubscribe();
-        tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
-        // Unsubscribe from accel_tap_service as it's not needed
-        accel_tap_service_unsubscribe();
-      }
-    } else if (settings.SecondsVisibleTime > 0) {
-      // "Timeout" logic: start with seconds shown, register a timer
-      showSeconds = true;
-      if (settings.EnableSecondsHand) {
-        tick_timer_service_unsubscribe();
-        tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
-        s_timeout_timer = app_timer_register(SECONDS_TICK_INTERVAL_MS * settings.SecondsVisibleTime, timeout_handler, NULL);
-        // Subscribe to accel_tap_service to reset the timer
-        accel_tap_service_subscribe(accel_tap_handler);
-      }
-    } else {
-      // "Disabled" logic: don't show seconds, ensure we're on minute ticks
-      showSeconds = false;
-      tick_timer_service_unsubscribe();
-      tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-      // Unsubscribe from accel_tap_service
-      accel_tap_service_unsubscribe();
-    }
-    layer_mark_dirty(s_canvas_second_hand);
-  }
-
-
 
 
   if (bwthemeselect_t) {
@@ -916,16 +841,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         settings.MinuteHandShadowColor = GColorWhite;
                         }
                     settings.BackgroundColor1 = GColorWhite;
-                  // settings.TextColor1 = GColorWhite;
                     settings.MinorTickColor = GColorBabyBlueEyes;
-                  //  settings.TextColor3 = GColorDarkGray;
                     settings.DateColor = GColorDarkGray;
                     settings.HourDigitsColor = GColorCobaltBlue;
-                  //  settings.HoursHandBorderColor = GColorDarkGray;
                     settings.MinutesHandColor = GColorCobaltBlue;
-                  //  settings.MinutesHandBorderColor = GColorCobaltBlue;
                     settings.MajorTickColor = GColorCobaltBlue;
-                  //  settings.SecondsHandColor = GColorOrange;
                     settings.BatteryLineColor = GColorOrange;
                     settings.BTQTColor = GColorDarkGray;
                       theme_settings_changed = true;
@@ -943,16 +863,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         else {
                         settings.MinuteHandShadowColor = GColorBlack;
                         }
-                  //  settings.TextColor1 = GColorBlack;
                     settings.MinorTickColor = GColorDarkGray;
-                  //  settings.TextColor3 = GColorWindsorTan;
                     settings.DateColor = GColorWindsorTan;
                     settings.HourDigitsColor = GColorYellow;
-                  //  settings.HoursHandBorderColor = GColorYellow;
                     settings.MinutesHandColor = GColorYellow;
-                  //  settings.MinutesHandBorderColor = GColorYellow;
                     settings.MajorTickColor = GColorYellow;
-                  //  settings.SecondsHandColor = GColorYellow;
                     settings.BatteryLineColor = GColorYellow;
                     settings.BTQTColor = GColorLightGray;
                       theme_settings_changed = true;
@@ -970,16 +885,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         else {
                         settings.MinuteHandShadowColor = GColorDukeBlue;
                         }
-                  //  settings.TextColor1 = GColorBlack;
                     settings.MinorTickColor = GColorPictonBlue;
-                  //  settings.TextColor3 = GColorIcterine;
                     settings.DateColor = GColorWhite;
                     settings.HourDigitsColor = GColorYellow;
-                  //  settings.HoursHandBorderColor = GColorYellow;
                     settings.MinutesHandColor = GColorYellow;
-                  //  settings.MinutesHandBorderColor = GColorYellow;
                     settings.MajorTickColor = GColorYellow;
-                  //  settings.SecondsHandColor = GColorRed;
                     settings.BatteryLineColor = GColorRed;
                     settings.BTQTColor = GColorPictonBlue;
                       theme_settings_changed = true;
@@ -997,16 +907,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         else {
                         settings.MinuteHandShadowColor = GColorPurple;
                         }
-                  //  settings.TextColor1 = GColorRichBrilliantLavender;
                     settings.MinorTickColor = GColorImperialPurple;
-                  //  settings.TextColor3 = GColorRichBrilliantLavender;
                     settings.DateColor = GColorRichBrilliantLavender;
                     settings.HourDigitsColor = GColorRichBrilliantLavender;
-                  //  settings.HoursHandBorderColor = GColorRichBrilliantLavender;
                     settings.MinutesHandColor = GColorRichBrilliantLavender;
-                  //  settings.MinutesHandBorderColor = GColorBlack;
                     settings.MajorTickColor = GColorRichBrilliantLavender;
-                  //  settings.SecondsHandColor = GColorBulgarianRose;
                     settings.BatteryLineColor = GColorBulgarianRose;
                     settings.BTQTColor = GColorImperialPurple;
                       theme_settings_changed = true;
@@ -1024,25 +929,17 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                         else {
                         settings.MinuteHandShadowColor = GColorBlack;
                         }
-                  //  settings.TextColor1 = GColorBlack;
                     settings.MinorTickColor = GColorDarkGreen;
-                  //  settings.TextColor3 = GColorBrightGreen;
                     settings.DateColor = GColorGreen;
                     settings.HourDigitsColor = GColorBrightGreen;
-                 //   settings.HoursHandBorderColor = GColorBrightGreen;
                     settings.MinutesHandColor = GColorBrightGreen;
-                  //  settings.MinutesHandBorderColor = GColorBrightGreen;
                     settings.MajorTickColor = GColorBrightGreen;
-                  //  settings.SecondsHandColor = GColorPastelYellow;
                     settings.BatteryLineColor = GColorPastelYellow;
                     settings.BTQTColor = GColorDarkGreen;
                       theme_settings_changed = true;
                       //  APP_LOG(APP_LOG_LEVEL_DEBUG, "Theme black & green selected");
           } else if (strcmp(themeselect_t->value->cstring, "cu") == 0) {
               // Set the theme for "cu" and handle custom colors
-              // settings.DateColor = GColorFromHEX(date_color_t->value->int32);
-              //       layer_mark_dirty(s_canvas_layer);
-
                   if (bg_color1_t) {
                     settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
                     settings_changed = true;
@@ -1062,22 +959,11 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                       }
                   }
 
-                  // if (text_color1_t) {
-                  //   settings.TextColor1 = GColorFromHEX(text_color1_t->value->int32);
-                  //   layer_mark_dirty(s_dial_layer);
-                  //   //layer_mark_dirty(s_dial_digits_layer);
-                  //   layer_mark_dirty(s_date_battery_logo_layer);
-                  // }
                   if (text_color2_t) {
                     settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
                     layer_mark_dirty(s_bg_layer);
                   }
-                  // if (text_color3_t) {
-                  //   settings.TextColor3 = GColorFromHEX(text_color3_t->value->int32);
-                  //   layer_mark_dirty(s_dial_layer);
-                  //  // layer_mark_dirty(s_dial_digits_layer);
-                  //   layer_mark_dirty(s_date_battery_logo_layer);
-                  // }
+                  
                   if (date_color_t) {
                     settings.DateColor = GColorFromHEX(date_color_t->value->int32);
                     layer_mark_dirty(s_canvas_layer);
@@ -1086,32 +972,22 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
                   if (hours_color_t) {
                     settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
                     layer_mark_dirty(s_canvas_layer);
-                    layer_mark_dirty(s_canvas_second_hand);
+                   // layer_mark_dirty(s_canvas_second_hand);
                   }
-                  // if (hours_border_t) {
-                  //   settings.HoursHandBorderColor = GColorFromHEX(hours_border_t->value->int32);
-                  //   layer_mark_dirty(s_canvas_layer);
-                  // }
+                 
                   if (minutes_color_t) {
                     settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
                     layer_mark_dirty(s_canvas_layer);
-                    layer_mark_dirty(s_canvas_second_hand);
+                  //  layer_mark_dirty(s_canvas_second_hand);
                     layer_mark_dirty(s_date_battery_logo_layer);
                   }
-                  // if (minutes_border_t) {
-                  //   settings.MinutesHandBorderColor = GColorFromHEX(minutes_border_t->value->int32);
-                  //   layer_mark_dirty(s_canvas_layer);
-                  //   layer_mark_dirty(s_date_battery_logo_layer);
-                  // }
+                 
                   if (tick_color_t) {
                     settings.MajorTickColor = GColorFromHEX(tick_color_t->value->int32);
                     layer_mark_dirty(s_canvas_layer);
                     layer_mark_dirty(s_date_battery_logo_layer);
                   }
-                  // if (seconds_color_t) {
-                  //   settings.SecondsHandColor = GColorFromHEX(seconds_color_t->value->int32);
-                  //   layer_mark_dirty(s_canvas_second_hand);
-                  // }
+                  
                   if (battery_line_color_t) {
                     settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
                     layer_mark_dirty(s_canvas_battery);
@@ -1128,98 +1004,13 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
                   ///////////////////////////////
 
-  // if (bg_color1_t) {
-  //   settings.BackgroundColor1 = GColorFromHEX(bg_color1_t->value->int32);
-  //   layer_mark_dirty(s_bg_layer);
-  //   layer_mark_dirty(s_canvas_layer);
-  //   layer_mark_dirty(s_dial_layer);
-  //   layer_mark_dirty(s_dial_digits_layer);
-  //   layer_mark_dirty(s_date_battery_logo_layer);
-  //   layer_mark_dirty(s_canvas_second_hand);
-  // }
-
-  // if (shadowon_t) {
-  //   settings.ShadowOn = shadowon_t->value->int32 == 1;
-  //   APP_LOG(APP_LOG_LEVEL_DEBUG, "color shadow is %d",settings.ShadowOn);
-  //
-  //   if(settings.ShadowOn){
-  //     if (bg_color2_t) {
-  //       settings.MinuteHandShadowColor = GColorFromHEX(bg_color2_t->value->int32);
-  //       settings_changed = true;
-  //     }
-  //   }
-  //   else {
-  //   settings.MinuteHandShadowColor = settings.BackgroundColor1;
-  //   }
-  //   layer_mark_dirty(s_bg_layer);
-  //   layer_mark_dirty(s_canvas_layer);
-  //   layer_mark_dirty(s_dial_layer);
-  //   layer_mark_dirty(s_dial_digits_layer);
-  //   layer_mark_dirty(s_date_battery_logo_layer);
-  //   layer_mark_dirty(s_canvas_second_hand);
-  // }
-
-  // if (text_color1_t) {
-  //   settings.TextColor1 = GColorFromHEX(text_color1_t->value->int32);
-  //   layer_mark_dirty(s_dial_layer);
-  //   layer_mark_dirty(s_dial_digits_layer);
-  //   layer_mark_dirty(s_date_battery_logo_layer);
-  // }
-  // if (text_color2_t) {
-  //   settings.MinorTickColor = GColorFromHEX(text_color2_t->value->int32);
-  //   layer_mark_dirty(s_bg_layer);
-  // }
-  // if (text_color3_t) {
-  //   settings.TextColor3 = GColorFromHEX(text_color3_t->value->int32);
-  //   layer_mark_dirty(s_dial_layer);
-  //   layer_mark_dirty(s_dial_digits_layer);
-  //   //layer_mark_dirty(s_date_battery_logo_layer);
-  // }
-  // if (date_color_t) {
-  //   settings.DateColor = GColorFromHEX(date_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_layer);
-  //   layer_mark_dirty(s_date_battery_logo_layer);
-  // }
-  //
-  // if (hours_color_t) {
-  //   settings.HourDigitsColor = GColorFromHEX(hours_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_layer);
-  //   layer_mark_dirty(s_canvas_second_hand);
-  // }
-  // if (hours_border_t) {
-  //   settings.HoursHandBorderColor = GColorFromHEX(hours_border_t->value->int32);
-  //   layer_mark_dirty(s_canvas_layer);
-  // }
-  // if (minutes_color_t) {
-  //   settings.MinutesHandColor = GColorFromHEX(minutes_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_layer);
-  //   layer_mark_dirty(s_canvas_second_hand);
-  // }
-  // if (minutes_border_t) {
-  //   settings.MinutesHandBorderColor = GColorFromHEX(minutes_border_t->value->int32);
-  //   layer_mark_dirty(s_canvas_layer);
-  // }
-  // if (seconds_color_t) {
-  //   settings.SecondsHandColor = GColorFromHEX(seconds_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_second_hand);
-  // }
-  // if (battery_line_color_t) {
-  //   settings.BatteryLineColor = GColorFromHEX(battery_line_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_battery);
-  // }
-  // if (btqt_color_t) {
-  //   settings.BTQTColor = GColorFromHEX(btqt_color_t->value->int32);
-  //   layer_mark_dirty(s_canvas_bt_icon);
-  //   layer_mark_dirty(s_canvas_qt_icon);
-  // }
-
   if (settings_changed) {
     layer_mark_dirty(s_bg_layer);
     layer_mark_dirty(s_canvas_layer);
     layer_mark_dirty(s_dial_layer);
    // layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
-    layer_mark_dirty(s_canvas_second_hand);
+  //  layer_mark_dirty(s_canvas_second_hand);
     layer_mark_dirty(s_canvas_battery);
   }
 
@@ -1229,7 +1020,7 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layer_mark_dirty(s_dial_layer);
   //  layer_mark_dirty(s_dial_digits_layer);
     layer_mark_dirty(s_date_battery_logo_layer);
-    layer_mark_dirty(s_canvas_second_hand);
+  //  layer_mark_dirty(s_canvas_second_hand);
     layer_mark_dirty(s_canvas_qt_icon);
     layer_mark_dirty(s_canvas_bt_icon);
     layer_mark_dirty(s_canvas_battery);
@@ -1240,6 +1031,9 @@ static void prv_inbox_received_handler(DictionaryIterator *iter, void *context) 
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "tick_handler fired: %02d:%02d", tick_time->tm_hour, tick_time->tm_min);
+
   time_t temp = time(NULL);
   prv_tick_time = localtime(&temp);
 
@@ -1259,28 +1053,33 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 }
 
-
-
-///second hand
+///analogue hand
 static void draw_line_hand(GContext *ctx, int angle, int length, int back_length, GColor color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   GPoint origin_offset = GPoint(origin.x + config.hands_shadow, origin.y + config.hands_shadow);
   GPoint p1;
   GPoint p2;
+  GPoint p3;
+  GPoint p4;
   
   #ifdef PBL_ROUND
-    p1 = polar_to_point_offset(origin, angle + 180, back_length);
-    p2 = polar_to_point_offset(origin, angle, length);
+      p1 = polar_to_point_offset(origin, angle + 180, back_length);
+      p2 = polar_to_point_offset(origin, angle, length);
+      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
+      p4 = polar_to_point_offset(origin_offset, angle, length);
   #else
     if(settings.ForegroundShape){
       p1 = polar_to_point_offset(origin, angle + 180, back_length);
       p2 = polar_to_point_offset(origin, angle, length);
+      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
+      p4 = polar_to_point_offset(origin_offset, angle, length);
     }
     else{
       GRect r = GRect(0, 0, bounds.size.w, bounds.size.h);
-      //p1 = point_from_edge(origin, angle+180, r, back_length);
       p1 = polar_to_point_offset(origin, angle + 180, back_length);
       p2 = angle_to_rounded_rect_edge(origin, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
+      p3 = polar_to_point_offset(origin_offset, angle + 180, back_length);
+      p4 = angle_to_rounded_rect_edge(origin_offset, angle, bounds.size.w/2-10, bounds.size.h/2-10, config.corner_radius_secondshand);
 
     }
   #endif
@@ -1293,37 +1092,68 @@ static void draw_line_hand(GContext *ctx, int angle, int length, int back_length
 
   // Draw the shadow first, with a small offset
   graphics_context_set_stroke_color(ctx, shadow_color);
-  graphics_context_set_stroke_width(ctx, 1); // Same width as the hand
-  graphics_draw_line(ctx, GPoint(p1.x + config.hands_shadow, p1.y + config.hands_shadow), GPoint(p2.x + config.hands_shadow, p2.y + config.hands_shadow));
   graphics_context_set_fill_color(ctx, shadow_color);
+  graphics_context_set_stroke_width(ctx, settings.HandThickness); // Same width as the hand
+  
+  #ifdef PBL_COLOR
+    graphics_draw_line(ctx, 
+        GPoint(p3.x, p3.y), 
+        GPoint(p4.x, p4.y)
+      );
+  #else  //switch to a fill as grey is not available as a line colour on BW screens
+        GPoint s1 = GPoint(p3.x, p3.y);
+        GPoint s2 = GPoint(p4.x, p4.y);
+
+        int sdx = s2.x - s1.x;
+        int sdy = s2.y - s1.y;
+        int len_sq = sdx*sdx + sdy*sdy;
+        int len = 1;
+        while (len * len < len_sq) len++;
+
+        int px = (sdy * settings.HandThickness ) / len;
+        int py = (sdx * settings.HandThickness ) / len;
+
+        GPoint shadow_points[4] = {
+          GPoint(s1.x - px, s1.y + py),
+          GPoint(s1.x + px, s1.y - py),
+          GPoint(s2.x + px, s2.y - py),
+          GPoint(s2.x - px, s2.y + py),
+        };
+        GPathInfo shadow_path_info = { .num_points = 4, .points = shadow_points };
+        GPath *shadow_path = gpath_create(&shadow_path_info);
+        graphics_context_set_fill_color(ctx, shadow_color);
+        gpath_draw_filled(ctx, shadow_path);
+        gpath_destroy(shadow_path);
+  #endif  
+
   GPoint origin_back_offset = GPoint(p1.x + config.hands_shadow, p1.y + config.hands_shadow);
-  graphics_fill_circle(ctx, origin_back_offset, 4);
-  graphics_fill_circle(ctx, origin_offset, 7); //started as 4
+  graphics_fill_circle(ctx, origin_back_offset, settings.BackSize);
+  graphics_fill_circle(ctx, origin_offset, settings.CentreSize); //started as 4
 
 
 
-  // Now draw the main second hand on top
+  // Now draw the main hand on top
   graphics_context_set_stroke_color(ctx, color);
-  graphics_context_set_stroke_width(ctx, 2);
+  graphics_context_set_stroke_width(ctx, settings.HandThickness);
   graphics_draw_line(ctx, p1, p2);
 
   graphics_context_set_fill_color(ctx, color);
   GPoint origin_back = GPoint(p1.x, p1.y);
-  graphics_fill_circle(ctx, origin_back, 4);
+  graphics_fill_circle(ctx, origin_back, settings.BackSize);
 
 }
 
 
 
-static void draw_seconds_center(GContext *ctx, GColor outer_color, GColor inner_color) {
+static void draw_hand_center(GContext *ctx, GColor outer_color, GColor inner_color) {
   GPoint origin = GPoint(bounds.size.w / 2, bounds.size.h / 2);
   graphics_context_set_antialiased(ctx, true);
 
   graphics_context_set_fill_color(ctx, outer_color);
-  graphics_fill_circle(ctx, origin, config.SecondsCentreOuterRadius); //started as 4
+  graphics_fill_circle(ctx, origin, settings.CentreSize); //started as 4
   
   graphics_context_set_fill_color(ctx, inner_color);
-  graphics_fill_circle(ctx, origin, config.SecondsCentreInnerRadius); //started as 2
+  graphics_fill_circle(ctx, origin, settings.InnerCentreSize); //started as 2
 
 }
 
@@ -1472,7 +1302,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     minutes = prv_tick_time->tm_min;
     hours = prv_tick_time->tm_hour % 12;
     ///use below for testing and for screenshots
-     //int seconds = 8;
        // minutes = 30;
        // hours = 9;
 
@@ -1496,6 +1325,10 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     if(strcmp(settings.PosBottom, "hr") == 0){
 
        graphics_context_set_antialiased(ctx, true);
+
+           char mindraw[3];
+             snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
            int hourdraw;
 
               char hournow[4];
@@ -1511,12 +1344,21 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
             GRect hour_rect = GRect(0, bounds.size.h * 3/4 - 15, bounds.size.w, 20);
              graphics_context_set_text_color(ctx, settings.BWHourDigitsColor);
+            if(settings.DigitalHour){
              graphics_draw_text(ctx, hournow, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+            }
+            else{
+             graphics_draw_text(ctx, mindraw, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
+            }
    }
    
    if(strcmp(settings.PosTop, "hr") == 0){
 
          graphics_context_set_antialiased(ctx, true);
+
+          char mindraw[3];
+             snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
            int hourdraw;
 
               char hournow[4];
@@ -1532,13 +1374,19 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
             GRect hour_rect = GRect(0, bounds.size.h/4 - 15, bounds.size.w, 20);
              graphics_context_set_text_color(ctx, settings.BWHourDigitsColor);
+            if(settings.DigitalHour){
              graphics_draw_text(ctx, hournow, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
-
+            }
+            else{
+             graphics_draw_text(ctx, mindraw, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
+            }
     }
 
 
     if(strcmp(settings.PosRight, "hr") == 0){
          graphics_context_set_antialiased(ctx, true);
+         char mindraw[3];
+             snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
            int hourdraw;
 
               char hournow[4];
@@ -1554,14 +1402,20 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
             GRect hour_rect = GRect(bounds.size.w/2, bounds.size.h/2 - 15, bounds.size.w/2, 20);
              graphics_context_set_text_color(ctx, settings.BWHourDigitsColor);
+            if(settings.DigitalHour){
              graphics_draw_text(ctx, hournow, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
-
+            }
+            else{
+             graphics_draw_text(ctx, mindraw, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
+            }
 
     }
     
     if(strcmp(settings.PosLeft, "hr") == 0){
 
          graphics_context_set_antialiased(ctx, true);
+         char mindraw[3];
+             snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
            int hourdraw;
 
               char hournow[4];
@@ -1577,7 +1431,12 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
             GRect hour_rect = GRect(0, bounds.size.h/2 - 15, bounds.size.w/2, 20);
              graphics_context_set_text_color(ctx, settings.BWHourDigitsColor);
+             if(settings.DigitalHour){
              graphics_draw_text(ctx, hournow, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+            }
+            else{
+             graphics_draw_text(ctx, mindraw, FontHour, hour_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL); 
+            }
     }
 
 ///////Draw date in one of 4 positions
@@ -1757,7 +1616,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     }
 
   }
-//if(settings.showlocalAMPM){
 
 if (!clock_is_24h_style()){
 
@@ -1829,6 +1687,10 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    hour_pos.x = INT_TO_FIXED((bounds.size.w / 4));
    hour_pos.y = INT_TO_FIXED((bounds.size.h / 2));
 
+   char mindraw[3];
+       snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+  
+
    int hourdraw;
       char hournow[4];
       if (clock_is_24h_style()) {
@@ -1844,9 +1706,15 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     fctx_begin_fill(&fctx);
     fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
 
-          fctx_set_offset(&fctx, hour_pos);
-          fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-          fctx_end_fill(&fctx);
+    fctx_set_offset(&fctx, hour_pos);
+    fctx_set_offset(&fctx, hour_pos);
+    if(settings.DigitalHour){
+      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    else{
+      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    fctx_end_fill(&fctx);
     }
 
   if(strcmp(settings.PosRight, "hr") == 0){
@@ -1856,6 +1724,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    hour_pos.x = INT_TO_FIXED((bounds.size.w*3 / 4));
    hour_pos.y = INT_TO_FIXED((bounds.size.h / 2));
 
+   char mindraw[3];
+       snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
    int hourdraw;
       char hournow[4];
       if (clock_is_24h_style()) {
@@ -1871,9 +1742,15 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     fctx_begin_fill(&fctx);
     fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
 
-          fctx_set_offset(&fctx, hour_pos);
-          fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-          fctx_end_fill(&fctx);
+    fctx_set_offset(&fctx, hour_pos);
+    fctx_set_offset(&fctx, hour_pos);
+    if(settings.DigitalHour){
+      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    else{
+      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    fctx_end_fill(&fctx);
   }
 
   if(strcmp(settings.PosTop, "hr") == 0){
@@ -1883,6 +1760,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    hour_pos.x = INT_TO_FIXED((bounds.size.w / 2));
    hour_pos.y = INT_TO_FIXED((bounds.size.h / 4));
 
+   char mindraw[3];
+        snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
    int hourdraw;
       char hournow[4];
       if (clock_is_24h_style()) {
@@ -1898,9 +1778,15 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     fctx_begin_fill(&fctx);
     fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
 
-          fctx_set_offset(&fctx, hour_pos);
-          fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-          fctx_end_fill(&fctx);
+    fctx_set_offset(&fctx, hour_pos);
+    fctx_set_offset(&fctx, hour_pos);
+    if(settings.DigitalHour){
+      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    else{
+      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    fctx_end_fill(&fctx);
   }
 
   if(strcmp(settings.PosBottom, "hr") == 0){
@@ -1910,6 +1796,9 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
    hour_pos.x = INT_TO_FIXED((bounds.size.w / 2));
    hour_pos.y = INT_TO_FIXED((bounds.size.h*3 / 4));
 
+   char mindraw[3];
+        snprintf(mindraw, sizeof(mindraw), "%02d", minutes);
+
    int hourdraw;
       char hournow[4];
       if (clock_is_24h_style()) {
@@ -1925,9 +1814,14 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     fctx_begin_fill(&fctx);
     fctx_set_text_em_height(&fctx, Date_Font, config.font_size_digits);
 
-          fctx_set_offset(&fctx, hour_pos);
-          fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
-          fctx_end_fill(&fctx);
+    fctx_set_offset(&fctx, hour_pos);
+    if(settings.DigitalHour){
+      fctx_draw_string(&fctx, hournow, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    else{
+      fctx_draw_string(&fctx, mindraw, Date_Font, GTextAlignmentCenter, FTextAnchorMiddle);
+    }
+    fctx_end_fill(&fctx);
   }
 
   //draw battery value
@@ -2092,7 +1986,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     hours = prv_tick_time->tm_hour % 12;
 
     ///use below for testing and for screenshots
-    //  int seconds = 8;
        // minutes = 30;
        // hours = 9;
 
@@ -2149,8 +2042,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
 
     }
 
-
-
     if(strcmp(settings.PosLeft, "dt") == 0){
     fctx_set_fill_color(&fctx, PBL_IF_BW_ELSE(settings.BWDateColor, settings.DateColor));
 
@@ -2158,7 +2049,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     hours = prv_tick_time->tm_hour % 12;
 
     ///use below for testing and for screenshots
-    //  int seconds = 8;
        // minutes = 30;
        // hours = 9;
 
@@ -2225,7 +2115,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
     hours = prv_tick_time->tm_hour % 12;
 
     ///use below for testing and for screenshots
-    //  int seconds = 8;
        // minutes = 30;
        // hours = 9;
 
@@ -2384,7 +2273,6 @@ static void update_logo_date_battery_fctx_layer (Layer *layer, GContext *ctx) {
                     *split = '\0';
                     line2 = split + 1;
                 }
-                // No space found = single word, leave line2 NULL and draw as one line
             }
 
           if (line2) {
@@ -2717,7 +2605,6 @@ static void layer_update_proc_bt(Layer * layer, GContext * ctx){
   graphics_context_set_text_color(ctx, settings.BWBTQTColor);
  #endif
 
- //bluetooth_callback(connection_service_peek_pebble_app_connection());
  graphics_context_set_antialiased(ctx, true);
  graphics_draw_text(ctx, "z", FontBTQTIcons, BTIconRect, GTextOverflowModeFill,GTextAlignmentCenter, NULL);
 
@@ -2794,7 +2681,6 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
    minutes = prv_tick_time->tm_min;
 
   ///use below for testing and for screenshots
-  //  int seconds = 8;
     // int minutes = 30;
     // int hours = 9;
   
@@ -2802,29 +2688,32 @@ static void hour_min_hands_canvas_update_proc(Layer *layer, GContext *ctx) {
     minutes = MINUTE;
   #endif
 
-  int minutes_angle = ((double)minutes / 60 * 360) + /*((double)seconds / 60 * 360 / 60)*/ - 90;
+  int minutes_angle = (360 * minutes / 60) - 90;
+  int hours_angle   = (360 * (s_hours % 12) / 12) + (minutes / 2) - 90;
+
+  int hand_angle = settings.DigitalHour ? minutes_angle : hours_angle;
 
   #ifdef PBL_ROUND
-   draw_line_hand(ctx, minutes_angle,
-       bounds.size.w/2 - config.second_hand_a, 
-       config.second_hand_b,  
-       PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-   draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+      draw_line_hand(ctx, hand_angle,
+          bounds.size.w/2 - config.analogue_hand_a,
+          settings.BackLen,
+          PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
+      draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
   #else
-  if(settings.ForegroundShape){
-   draw_line_hand(ctx, minutes_angle, 
-        bounds.size.w/2 - config.second_hand_a, 
-        config.second_hand_b,  
-        PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-   draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
-  }
-  else{
-    draw_line_hand(ctx, minutes_angle, 
-        bounds.size.w/2 - config.second_hand_c, 
-        config.second_hand_b,  
-        PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
-    draw_seconds_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
-  }
+      if(settings.ForegroundShape){
+          draw_line_hand(ctx, hand_angle,
+              bounds.size.w/2 - config.analogue_hand_a,
+              settings.BackLen,
+              PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
+          draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+      }
+      else{
+          draw_line_hand(ctx, hand_angle,
+              bounds.size.w/2 - config.analogue_hand_c,
+              settings.BackLen,
+              PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor));
+          draw_hand_center(ctx, PBL_IF_BW_ELSE(settings.BWMinHandBatLineColor, settings.MinutesHandColor), PBL_IF_BW_ELSE(settings.BWBackgroundColor1, settings.BackgroundColor1));
+      }
   #endif
 
 }
@@ -2878,9 +2767,6 @@ static void prv_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   bounds = layer_get_bounds(window_layer);
 
-  Layer *seconds_root_layer = window_get_root_layer(window);
-  bounds_seconds = layer_get_bounds(seconds_root_layer);
-
   // Load fctx ffonts
     Date_Font =  ffont_create_from_resource(RESOURCE_ID_FONT_DATE_FCTX);
     FontBTQTIcons = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_DRIPICONS_16));
@@ -2896,21 +2782,8 @@ static void prv_window_load(Window *window) {
     .pebble_app_connection_handler = bluetooth_vibe_icon
   });
 
-  // Subscribe to the correct tick service based on settings
-    if (settings.EnableSecondsHand) {
-        if (settings.SecondsVisibleTime == 135) {
-        tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
-        } else {
-        tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
-        s_timeout_timer = app_timer_register(1000*settings.SecondsVisibleTime, timeout_handler,NULL);
-        accel_tap_service_subscribe(accel_tap_handler);
-        }
-    }
-    else {
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-    }
-    showSeconds = settings.EnableSecondsHand;
-
+     tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+   
   //create layers
   s_bg_layer = layer_create(bounds);
   s_dial_layer = layer_create(bounds);
@@ -2921,7 +2794,6 @@ static void prv_window_load(Window *window) {
     layer_set_hidden(s_canvas_bt_icon, is_connected);
   s_canvas_battery = layer_create(bounds);
   s_canvas_layer = layer_create(bounds);
-  s_canvas_second_hand = layer_create(bounds_seconds);
   s_date_battery_logo_layer = layer_create(bounds);
 
   // Change the order here
@@ -2931,8 +2803,7 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, s_date_battery_logo_layer); //fctx version of text
   layer_add_child(window_layer, s_canvas_battery); //battery line
   layer_add_child(window_layer, s_canvas_layer);  //hour and minute hands
-  layer_add_child(seconds_root_layer, s_canvas_second_hand);  //second hand
-
+ 
   bluetooth_vibe_icon(connection_service_peek_pebble_app_connection());
 
   layer_set_update_proc(s_bg_layer, bg_update_proc);
@@ -2945,9 +2816,6 @@ static void prv_window_load(Window *window) {
 
 
 static void prv_window_unload(Window *window) {
-  if (s_timeout_timer) {
-    app_timer_cancel(s_timeout_timer);
-  }
   accel_tap_service_unsubscribe();
   connection_service_unsubscribe();
   battery_state_service_unsubscribe();
@@ -2955,7 +2823,6 @@ static void prv_window_unload(Window *window) {
   layer_destroy(s_canvas_layer);
   layer_destroy(s_bg_layer);
   layer_destroy(s_dial_layer);
-  layer_destroy(s_canvas_second_hand);
   layer_destroy(s_canvas_battery);
   layer_destroy(s_canvas_bt_icon);
   layer_destroy(s_canvas_qt_icon);

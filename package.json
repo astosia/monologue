@@ -1,7 +1,7 @@
 {
   "name": "monologue",
   "author": "astosia",
-  "version": "1.6.0",
+  "version": "2.1.0",
   "keywords": [
     "pebble",
     "watchface",
@@ -43,6 +43,12 @@
       "PosTop",
       "PosRight",
       "PosBottom",
+      "HandThickness",
+      "CentreSize",
+      "DigitalHour",
+      "BackSize",
+      "BackLen",
+      "InnerCentreSize",
       "RemoveZero24h",
       "AddZero12h",
       "showlocalAMPM",

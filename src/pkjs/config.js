@@ -26,6 +26,13 @@ module.exports = [
       },
       {
         "type": "toggle",
+        "label": "Digital Time Style",
+        "messageKey": "DigitalHour",
+        "description": "Off = Digital Minute, Hour Hand, On = Digital Hour, Minute Hand",
+        "defaultValue": true
+      },
+      {
+        "type": "toggle",
         "label": "Add leading zero to 12h time",
         "messageKey": "AddZero12h",
         "defaultValue": false
@@ -87,6 +94,13 @@ module.exports = [
         "label": "Vibrate on Bluetooth disconnect during Quiet Time",
         "description": "If set to off, will still vibrate on disconnect, but not during quiet time",
         "defaultValue": false
+      },
+      {
+        "type": "toggle",
+        "messageKey": "VibeOn",
+        "label": "Vibrate on Bluetooth disconnect during Quiet Time",
+        "description": "If set to off, will still vibrate on disconnect, but not during quiet time",
+        "defaultValue": false
       }
     ]
   },
@@ -109,7 +123,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -137,7 +151,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -166,7 +180,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -195,7 +209,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -224,7 +238,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -253,7 +267,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -282,7 +296,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -311,7 +325,7 @@ module.exports = [
             "value": "em"
           },
           {
-            "label": "Hour Digits",
+            "label": "Time Digits",
             "value": "hr"
           },
           {
@@ -527,5 +541,104 @@ module.exports = [
   {
     "type": "submit",
     "defaultValue": "Save"
-  }
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
+        "defaultValue": "Analogue Hand Style"
+      },
+      {
+        "type": "slider",
+        "label": "Minute Hand Thickness",
+        "messageKey": "HandThickness",
+        "description": "Default = 2",
+        "defaultValue": 2,
+        "min": 1,
+        "max": 5,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
+        "label": "Hand Centre Radius",
+        "messageKey": "CentreSize",
+        "defaultValue": 7,
+        "description": "Default = 7",
+        "min": 1,
+        "max": 11,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
+        "label": "Hand Centre Radius",
+        "messageKey": "CentreSize",
+        "defaultValue": 9,
+        "description": "Default = 9",
+        "min": 1,
+        "max": 15,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
+        "label": "Hand Centre Inner Radius",
+        "messageKey": "InnerCentreSize",
+        "defaultValue": 1,
+        "description": "Default = 1",
+        "min": 0,
+        "max": 9,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
+        "label": "Hand Centre Inner Radius",
+        "messageKey": "InnerCentreSize",
+        "defaultValue": 2,
+        "description": "Default = 2",
+        "min": 0,
+        "max": 9,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "label": "Hand End Radius",
+        "messageKey": "BackSize",
+        "defaultValue": 4,
+        "description": "Default = 4",
+        "min": 0,
+        "max": 9,
+        "step": 1
+      },
+      {
+        "type": "slider",
+        "label": "Hand End Length",
+        "messageKey": "BackLen",
+        "capabilities": ["NOT_PLATFORM_APLITE", "NOT_PLATFORM_BASALT", "NOT_PLATFORM_CHALK", "NOT_PLATFORM_DIORITE", "NOT_PLATFORM_FLINT"],
+        "defaultValue": 28,
+        "description": "Default = 28",
+        "min": 0,
+        "max": 40,
+        "step": 2
+      },
+      {
+        "type": "slider",
+        "label": "Hand End Length",
+        "messageKey": "BackLen",
+        "capabilities": ["NOT_PLATFORM_GABBRO", "NOT_PLATFORM_EMERY"],
+        "defaultValue": 22,
+        "description": "Default = 22",
+        "min": 0,
+        "max": 30,
+        "step": 2
+      }
+    ]
+  },
+  {
+    "type": "submit",
+    "defaultValue": "Save"
+  },
 ];
